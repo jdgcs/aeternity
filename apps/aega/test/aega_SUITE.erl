@@ -116,16 +116,16 @@ init_per_testcase(_TC, Config) ->
 ga_attach(_Cfg) ->
     state(aect_test_utils:new_state()),
     Acc1 = ?call(new_account, 10000000 * aec_test_utils:min_gas_price()),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
     ok.
 
 ga_double_attach_fail(_Cfg) ->
     state(aect_test_utils:new_state()),
     Acc1 = ?call(new_account, 10000000 * aec_test_utils:min_gas_price()),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
     {failed, not_a_basic_account} =
-        ?call(attach, Acc1, "authorize", "authorize", ["0"], #{fail => true}),
+        ?call(attach, Acc1, "simple_auth", "authorize", ["0"], #{fail => true}),
 
     ok.
 
@@ -133,7 +133,7 @@ ga_spend_to(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 10000000 * MinGP),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
     Acc2 = ?call(new_account, 10000000 * MinGP),
 
@@ -149,13 +149,13 @@ ga_spend_from(_Cfg) ->
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 10000000 * MinGP),
     Acc2 = ?call(new_account, 10000000 * MinGP),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
     InnerSpendTx = spend_tx(#{sender_id    => aeser_id:create(account, Acc1),
                               recipient_id => aeser_id:create(account, Acc2),
                               amount       => 500,
                               fee          => 20000 * MinGP}),
-    AuthData = make_calldata("authorize", "authorize", ["123", "1"]),
+    AuthData = make_calldata("simple_auth", "authorize", ["123", "1"]),
 
     PreBalance = ?call(account_balance, Acc2),
     {ok, _} = ?call(meta, Acc1, AuthData, InnerSpendTx),
@@ -169,13 +169,13 @@ ga_failed_auth(_Cfg) ->
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 10000000 * MinGP),
     Acc2 = ?call(new_account, 10000000 * MinGP),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
     InnerSpendTx = spend_tx(#{sender_id    => aeser_id:create(account, Acc1),
                               recipient_id => aeser_id:create(account, Acc2),
                               amount       => 500,
                               fee          => 20000 * MinGP}),
-    AuthData = make_calldata("authorize", "authorize", ["1234", "1"]),
+    AuthData = make_calldata("simple_auth", "authorize", ["1234", "1"]),
 
     {failed, authentication_failed} =
         ?call(meta, Acc1, AuthData, InnerSpendTx, #{fail => true}),
@@ -186,10 +186,10 @@ ga_contract_create(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 1000000000 * MinGP),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
     CreateTx = ?call(inner_create_tx, Acc1, "identity", []),
-    AuthData = make_calldata("authorize", "authorize", ["123", "1"]),
+    AuthData = make_calldata("simple_auth", "authorize", ["123", "1"]),
 
     {ok, #{init_res := ok}} = ?call(meta, Acc1, AuthData, CreateTx),
 
@@ -199,10 +199,10 @@ ga_contract_call(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 1000000000 * MinGP),
-    {ok, ok} = ?call(attach, Acc1, "authorize", "authorize", ["123"]),
+    {ok, ok} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
     CreateTx = ?call(inner_create_tx, Acc1, "identity", []),
-    {ok, #{src := Src}} = get_contract("authorize"),
+    {ok, #{src := Src}} = get_contract("simple_auth"),
     AuthData = make_calldata(Src, "authorize", ["123", "1"]),
 
     {ok, #{init_res := ok, ct_pubkey := Ct}} = ?call(meta, Acc1, AuthData, CreateTx),
