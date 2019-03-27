@@ -16,13 +16,18 @@
 -include_lib("aecontract/include/hard_forks.hrl").
 
 %% test case exports
--export([ ga_attach/1
-        , ga_double_attach_fail/1
-        , ga_spend_to/1
-        , ga_spend_from/1
-        , ga_failed_auth/1
-        , ga_contract_create/1
-        , ga_contract_call/1
+-export([ simple_attach/1
+        , simple_double_attach_fail/1
+        , simple_spend_to/1
+        , simple_spend_from/1
+        , simple_failed_auth/1
+        , simple_contract_create/1
+        , simple_contract_call/1
+
+        , basic_attach/1
+        , basic_spend_from/1
+        , basic_contract_create/1
+        , basic_contract_call/1
         ]).
 
 -include_lib("common_test/include/ct.hrl").
@@ -49,14 +54,23 @@ all() ->
     [{group, all}].
 
 groups() ->
-    [ {all, [], [ ga_attach
-                , ga_double_attach_fail
-                , ga_spend_to
-                , ga_spend_from
-                , ga_failed_auth
-                , ga_contract_create
-                , ga_contract_call
+    [ {all, [], [ {group, simple}
+                , {group, basic}
                 ]}
+
+    , {simple, [], [ simple_attach
+                   , simple_double_attach_fail
+                   , simple_spend_to
+                   , simple_spend_from
+                   , simple_failed_auth
+                   , simple_contract_create
+                   , simple_contract_call
+                   ]}
+    , {basic, [], [ basic_attach
+                  , basic_spend_from
+                  , basic_contract_create
+                  , basic_contract_call
+                  ]}
     ].
 
 init_per_group(all, Cfg) ->
@@ -113,13 +127,13 @@ init_per_testcase(_TC, Config) ->
 %%% Simple GA tests
 %%%===================================================================
 
-ga_attach(_Cfg) ->
+simple_attach(_Cfg) ->
     state(aect_test_utils:new_state()),
     Acc1 = ?call(new_account, 10000000 * aec_test_utils:min_gas_price()),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
     ok.
 
-ga_double_attach_fail(_Cfg) ->
+simple_double_attach_fail(_Cfg) ->
     state(aect_test_utils:new_state()),
     Acc1 = ?call(new_account, 10000000 * aec_test_utils:min_gas_price()),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
@@ -129,13 +143,12 @@ ga_double_attach_fail(_Cfg) ->
 
     ok.
 
-ga_spend_to(_Cfg) ->
+simple_spend_to(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 10000000 * MinGP),
     Acc2 = ?call(new_account, 10000000 * MinGP),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
-
 
     PreBalance  = ?call(account_balance, Acc1),
     ok          = ?call(spend, Acc2, Acc1, 500,  20000 * MinGP),
@@ -144,14 +157,14 @@ ga_spend_to(_Cfg) ->
 
     ok.
 
-ga_spend_from(_Cfg) ->
+simple_spend_from(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 10000000 * MinGP),
     Acc2 = ?call(new_account, 10000000 * MinGP),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
-    AuthOpts    = make_authopts("simple_auth", "authorize", ["123", "1"]),
+    AuthOpts    = #{ prep_fun => fun(_) -> simple_auth(["123", "1"]) end },
     PreBalance  = ?call(account_balance, Acc2),
     {ok, _}     = ?call(ga_spend, Acc1, AuthOpts, Acc2, 500, 20000 * MinGP),
     PostBalance = ?call(account_balance, Acc2),
@@ -159,41 +172,93 @@ ga_spend_from(_Cfg) ->
 
     ok.
 
-ga_failed_auth(_Cfg) ->
+simple_failed_auth(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 10000000 * MinGP),
     Acc2 = ?call(new_account, 10000000 * MinGP),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
-    AuthOpts = make_authopts("simple_auth", "authorize", ["1234", "1"]),
+    AuthOpts = #{ prep_fun => fun(_) -> simple_auth(["1234", "1"]) end },
     {failed, authentication_failed} =
         ?call(ga_spend, Acc1, AuthOpts, Acc2, 500, 20000 * MinGP, #{fail => true}),
 
     ok.
 
-ga_contract_create(_Cfg) ->
+simple_contract_create(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 1000000000 * MinGP),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
-    AuthOpts = make_authopts("simple_auth", "authorize", ["123", "1"]),
+    AuthOpts = #{ prep_fun => fun(_) -> simple_auth(["123", "1"]) end },
     {ok, #{init_res := ok}} = ?call(ga_create, Acc1, AuthOpts, "identity", []),
 
     ok.
 
-ga_contract_call(_Cfg) ->
+simple_contract_call(_Cfg) ->
     state(aect_test_utils:new_state()),
     MinGP = aec_test_utils:min_gas_price(),
     Acc1 = ?call(new_account, 1000000000 * MinGP),
     {ok, _} = ?call(attach, Acc1, "simple_auth", "authorize", ["123"]),
 
-    AuthOpts = make_authopts("simple_auth", "authorize", ["123", "1"]),
+    AuthOpts = #{ prep_fun => fun(_) -> simple_auth(["123", "1"]) end },
     {ok, #{init_res := ok, ct_pubkey := Ct}} =
         ?call(ga_create, Acc1, AuthOpts, "identity", []),
 
-    AuthOpts2 = make_authopts("simple_auth", "authorize", ["123", "2"]),
+    AuthOpts2 = #{ prep_fun => fun(_) -> simple_auth(["123", "2"]) end },
+    {ok, #{call_res := ok, call_val := Val}} =
+        ?call(ga_call, Acc1, AuthOpts2, Ct, "identity", "main", ["42"]),
+    ?assertMatch("42", decode_call_result("identity", "main", ok, Val)),
+
+    ok.
+
+%%%===================================================================
+%%% Basic GA tests
+%%%===================================================================
+basic_attach(_Cfg) ->
+    state(aect_test_utils:new_state()),
+    Acc1 = ?call(new_account, 10000000 * aec_test_utils:min_gas_price()),
+    {ok, _} = ?call(attach, Acc1, "basic_auth", "authorize", []),
+    ok.
+
+basic_spend_from(_Cfg) ->
+    state(aect_test_utils:new_state()),
+    MinGP = aec_test_utils:min_gas_price(),
+    Acc1 = ?call(new_account, 10000000 * MinGP),
+    Acc2 = ?call(new_account, 10000000 * MinGP),
+    {ok, _} = ?call(attach, Acc1, "basic_auth", "authorize", []),
+
+    AuthOpts    = #{ prep_fun => fun(TxHash) -> ?call(basic_auth, Acc1, "1", TxHash) end },
+    PreBalance  = ?call(account_balance, Acc2),
+    {ok, _}     = ?call(ga_spend, Acc1, AuthOpts, Acc2, 500, 20000 * MinGP),
+    PostBalance = ?call(account_balance, Acc2),
+    ?assertMatch({X, Y} when X + 500 == Y, {PreBalance, PostBalance}),
+
+    ok.
+
+basic_contract_create(_Cfg) ->
+    state(aect_test_utils:new_state()),
+    MinGP = aec_test_utils:min_gas_price(),
+    Acc1 = ?call(new_account, 1000000000 * MinGP),
+    {ok, _} = ?call(attach, Acc1, "basic_auth", "authorize", []),
+
+    AuthOpts = #{ prep_fun => fun(TxHash) -> ?call(basic_auth, Acc1, "1", TxHash) end },
+    {ok, #{init_res := ok}} = ?call(ga_create, Acc1, AuthOpts, "identity", []),
+
+    ok.
+
+basic_contract_call(_Cfg) ->
+    state(aect_test_utils:new_state()),
+    MinGP = aec_test_utils:min_gas_price(),
+    Acc1 = ?call(new_account, 1000000000 * MinGP),
+    {ok, _} = ?call(attach, Acc1, "basic_auth", "authorize", []),
+
+    AuthOpts = #{ prep_fun => fun(TxHash) -> ?call(basic_auth, Acc1, "1", TxHash) end },
+    {ok, #{init_res := ok, ct_pubkey := Ct}} =
+        ?call(ga_create, Acc1, AuthOpts, "identity", []),
+
+    AuthOpts2 = #{ prep_fun => fun(TxHash) -> ?call(basic_auth, Acc1, "2", TxHash) end },
     {ok, #{call_res := ok, call_val := Val}} =
         ?call(ga_call, Acc1, AuthOpts2, Ct, "identity", "main", ["42"]),
     ?assertMatch("42", decode_call_result("identity", "main", ok, Val)),
@@ -287,7 +352,8 @@ ga_call(Caller, AuthOpts, Contract, ContractName, Fun, Args, Opts, S) ->
 
 meta(Owner, AuthOpts, InnerTx, Opts, S) ->
     Fail     = maps:get(fail, Opts, false),
-    AuthData = make_authdata(AuthOpts),
+    TxBin    = aec_governance:add_network_id(aetx:serialize_to_binary(InnerTx)),
+    AuthData = make_authdata(AuthOpts, aec_hash:hash(tx, TxBin)),
     Options1 = maps:merge(#{auth_data => AuthData, tx => InnerTx}, AuthOpts),
     MetaTx   = ga_meta_tx(Owner, Options1, S),
     SMetaTx  = aetx_sign:new(MetaTx, []),
@@ -325,6 +391,18 @@ meta(Owner, AuthOpts, InnerTx, Opts, S) ->
                             call_gas => aect_call:gas_used(InnerCall) }}
         end,
     {Res, S1}.
+
+dry_run(ContractPK, Contract, Fun, Args, S) ->
+    {DummyAcc, S1} = new_account(10000000 * aec_test_utils:min_gas_price(), S),
+    DryData        = make_calldata(Contract, Fun, Args),
+    DryNonce       = aect_test_utils:next_nonce(DummyAcc, S1),
+    CallTx         = call_tx(DummyAcc, ContractPK, #{call_data => DryData, nonce => DryNonce}, S1),
+    PrivKey        = aect_test_utils:priv_key(DummyAcc, S1),
+    {ok, S2}       = sign_and_apply_transaction(CallTx, PrivKey, S1, 1),
+    CallKey  = aect_call:id(DummyAcc, DryNonce, ContractPK),
+    CallTree = aect_test_utils:calls(S2),
+    Call     = aect_call_state_tree:get_call(ContractPK, CallKey, CallTree),
+    {ok, Call}.
 
 %%%===================================================================
 %%% Transactions
@@ -451,14 +529,18 @@ account_balance(PubKey, S) ->
     Account = aect_test_utils:get_account(PubKey, S),
     {aec_accounts:balance(Account), S}.
 
+account_contract(PK, S) ->
+    Account = aect_test_utils:get_account(PK, S),
+    {aec_accounts:ga_contract(Account), S}.
+
 %% perform_pre_transformations(Height, S) ->
 %%     Trees = aec_trees:perform_pre_transformations(aect_test_utils:trees(S), Height),
 %%     {ok, aect_test_utils:set_trees(Trees, S)}.
 
-%% get_contract_state(Contract) ->
-%%     S = state(),
-%%     {{value, C}, _} = lookup_contract_by_id(Contract, S),
-%%     get_ct_store(C).
+get_contract_state(Contract) ->
+    S = state(),
+    {{value, C}, _} = lookup_contract_by_id(Contract, S),
+    aect_contracts_store:contents(aect_contracts:state(C)).
 
 %% insert_contract(Account, Code, S) ->
 %%     Contract  = make_contract(Account, Code, S),
@@ -477,10 +559,10 @@ account_balance(PubKey, S) ->
 %%     Contract       = aect_state_tree:get_contract(ContractPubkey, Contracts),
 %%     {Contract, S}.
 
-%% lookup_contract_by_id(ContractKey, S) ->
-%%     Contracts = aect_test_utils:contracts(S),
-%%     X         = aect_state_tree:lookup_contract(ContractKey, Contracts),
-%%     {X, S}.
+lookup_contract_by_id(ContractKey, S) ->
+    Contracts = aect_test_utils:contracts(S),
+    X         = aect_state_tree:lookup_contract(ContractKey, Contracts),
+    {X, S}.
 
 %% get_call(Contract0, Call0, S) ->
 %%     CallId         = aect_call:id(Call0),
@@ -536,11 +618,8 @@ make_calldata(Code, Fun, Args) ->
     {ok, Calldata, _, _} = aeso_compiler:create_calldata(Code, Fun, Args),
     Calldata.
 
-make_authdata(#{ name := CName, auth_fun := AuthFun, auth_args := Args }) ->
-    make_calldata(CName, AuthFun, Args).
-
-make_authopts(Name, Fun, Args) ->
-    #{ name => Name, auth_fun => Fun, auth_args => Args}.
+make_authdata(#{ prep_fun := F }, TxHash) ->
+    F(TxHash).
 
 get_contract(Name0) ->
     Name = filename:join("contracts", Name0),
@@ -554,4 +633,37 @@ decode_call_result(Name0, Fun, Type, Val) ->
     {ok, BinSrc} = aect_test_utils:read_contract(Name),
     {ok, AST} = aeso_compiler:to_sophia_value(binary_to_list(BinSrc), Fun, Type, Val),
     prettypr:format(aeso_pretty:expr(AST)).
+
+to_hex_lit(Len, Bin) ->
+    [_, _ | Xs] = binary_to_list(aeu_hex:hexstring_encode(Bin)),
+    "#" ++
+        if length(Xs) < Len * 2 ->
+            lists:duplicate(Len * 2 - length(Xs), $0) ++ Xs;
+           true ->
+            Xs
+        end.
+
+hash_lit_to_bin("#" ++ Hex) ->
+    if length(Hex) rem 2 == 1 ->
+        aeu_hex:hexstring_decode(list_to_binary("0x0" ++ Hex));
+       true ->
+        aeu_hex:hexstring_decode(list_to_binary("0x" ++ Hex))
+    end.
+
+simple_auth(Args) ->
+    make_calldata("simple_auth", "authorize", Args).
+
+basic_auth(GA, Nonce, TxHash, S) ->
+    {GACt, _}  = account_contract(GA, S),
+    {contract, ContractPK} = aeser_id:specialize(GACt),
+    {ok, Call} = dry_run(ContractPK, "basic_auth", "to_sign", [to_hex_lit(32, TxHash), Nonce], S),
+    ok   = aect_call:return_type(Call),
+    Val  = aect_call:return_value(Call),
+    Hash = decode_call_result("basic_auth", "to_sign", ok, Val),
+
+    GAPrivKey  = aect_test_utils:priv_key(GA, S),
+    ct:pal("HASH: ~p\n", [Hash]),
+    Sign = enacl:sign_detached(hash_lit_to_bin(Hash), GAPrivKey),
+
+    {make_calldata("basic_auth", "authorize", [Nonce, to_hex_lit(64, Sign)]), S}.
 
