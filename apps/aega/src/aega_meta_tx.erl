@@ -161,7 +161,7 @@ signers(#ga_meta_tx{}, _) ->
     {ok, []}.
 
 -spec process(tx(), aec_trees:trees(), aetx_env:env()) -> {ok, aec_trees:trees(), aetx_env:env()}.
-process(#ga_meta_tx{} = Tx, Trees, Env) ->
+process(#ga_meta_tx{} = Tx, Trees, Env0) ->
     AuthInstructions =
         aec_tx_processor:ga_meta_tx_instructions(
           ga_pubkey(Tx),
@@ -171,9 +171,10 @@ process(#ga_meta_tx{} = Tx, Trees, Env) ->
           gas_price(Tx),
           fee(Tx),
           tx(Tx)),
+    Env = add_tx_hash(Env0, tx(Tx)),
     case aec_tx_processor:eval(AuthInstructions, Trees, Env) of
         {ok, Trees1, Env1} ->
-            Env2 = set_ga_context(Env1, ga_pubkey(Tx), auth_id(Tx)),
+            Env2 = set_ga_context(Env1, Tx),
             case aetx:process(tx(Tx), Trees1, Env2) of
                 {ok, Trees2, Env3} ->
                     {ok, Trees2, reset_ga_context(Env3, aetx_env:context(Env1))};
@@ -186,10 +187,15 @@ process(#ga_meta_tx{} = Tx, Trees, Env) ->
             Err
     end.
 
-set_ga_context(Env0, Id, Nonce) ->
+add_tx_hash(Env0, Aetx) ->
+    BinForNetwork = aec_governance:add_network_id(aetx:serialize_to_binary(Aetx)),
+    aetx_env:set_ga_tx_hash(Env0, aec_hash:hash(tx, BinForNetwork)).
+
+set_ga_context(Env0, Tx) ->
     Env1 = aetx_env:set_context(Env0, aetx_ga),
-    Env2 = aetx_env:set_ga_id(Env1, Id),
-    aetx_env:set_ga_nonce(Env2, Nonce).
+    Env2 = aetx_env:set_ga_id(Env1, ga_pubkey(Tx)),
+    Env3 = aetx_env:set_ga_nonce(Env2, auth_id(Tx)),
+    aetx_env:set_ga_tx_hash(Env3, undefined).
 
 reset_ga_context(Env0, Context) ->
     Env1 = aetx_env:set_context(Env0, Context),

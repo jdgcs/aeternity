@@ -30,6 +30,7 @@
         , difficulty/1
         , ga_id/1
         , ga_nonce/1
+        , ga_tx_hash/1
         , height/1
         , key_hash/1
         , signed_tx/1
@@ -42,6 +43,7 @@
         , set_context/2
         , set_ga_id/2
         , set_ga_nonce/2
+        , set_ga_tx_hash/2
         , set_height/2
         , set_signed_tx/2
         , tx_event/2
@@ -67,6 +69,7 @@
              , context           :: context()
              , ga_id             :: undefined | aec_keys:pubkey()
              , ga_nonce          :: undefined | binary()
+             , ga_tx_hash        :: undefined | binary()
              , difficulty        :: aeminer_pow:difficulty()
              , height            :: aec_blocks:height()
              , key_hash          :: aec_blocks:block_header_hash()
@@ -208,6 +211,14 @@ ga_nonce(#env{ga_nonce = X}) -> X.
 
 -spec set_ga_nonce(env(), undefined | binary()) -> env().
 set_ga_nonce(Env, X) -> Env#env{ga_nonce = X}.
+
+%%------
+
+-spec ga_tx_hash(env()) -> undefined | binary().
+ga_tx_hash(#env{ga_tx_hash = X}) -> X.
+
+-spec set_ga_tx_hash(env(), undefined | binary()) -> env().
+set_ga_tx_hash(Env, X) -> Env#env{ga_tx_hash = X}.
 
 %%------
 

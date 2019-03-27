@@ -176,7 +176,8 @@ primop_base_gas(?PRIM_CALL_CRYPTO_SHA3           ) -> 30;   %% Same as gas cost 
 primop_base_gas(?PRIM_CALL_CRYPTO_SHA256         ) -> 30;
 primop_base_gas(?PRIM_CALL_CRYPTO_BLAKE2B        ) -> 30;
 primop_base_gas(?PRIM_CALL_CRYPTO_SHA256_STRING  ) -> 30;
-primop_base_gas(?PRIM_CALL_CRYPTO_BLAKE2B_STRING ) -> 30.
+primop_base_gas(?PRIM_CALL_CRYPTO_BLAKE2B_STRING ) -> 30;
+primop_base_gas(?PRIM_CALL_AUTH_TX_HASH          ) -> 0.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Naming system variables
