@@ -579,6 +579,26 @@ jobs:
             #Dfi
       - *fail_notification
 
+  upload_latest_artifacts_osx:
+    executor: infrastructure_container_stable
+    <<: *infrastructure_config
+    steps:
+      - checkout
+      - *set_package_path
+      - *setup_secrets
+      - attach_workspace:
+          at: *packages_workspace
+      - run:
+          name: Upload build artifacts to central repository (AWS)
+          command: |
+            echo "upload tatest"
+            echo ${PACKAGE_TARBALL:?}
+            #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/
+            #if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
+            #  aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
+            #Dfi
+      - *fail_notification
+
   deploy_api_docs:
     executor: builder_container_stable
     <<: *container_config
@@ -1218,10 +1238,15 @@ workflows:
               only: *stable_tag_regex
   latest_artifacts:
     jobs:
+      - osx_package:
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
       - linux_package:
           filters:
             branches:
               only: add_additional_separate_ci_for_latest_artefacts_164307557
+
       - hodl_latest:
           type: approval
           filters:
@@ -1234,6 +1259,26 @@ workflows:
           filters:
             branches:
               only: add_additional_separate_ci_for_latest_artefacts_164307557
+
+      - upload_latest_artifacts_osx:
+          requires:
+            - osx_package
+            - hodl_latest
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
+
+      - deploy_api_docs:
+          requires:
+            - hodl_latest
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
+
+#            branches:
+#              ignore: /.*/
+#            tags:
+#              only: *stable_tag_regex
 
       - docker_push_latest:
           requires:
