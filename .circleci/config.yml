@@ -181,6 +181,14 @@ references:
         aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/
         aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
 
+  upload_latest_artifacts: &upload_latest_artifacts
+    run:
+      name: Upload latest artifacts to central repository (AWS)
+      command: |
+        echo "upload tatest"
+        echo ${PACKAGE_TARBALL:?}
+        #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
+
   setup_secrets: &setup_secrets
     run:
       name: Setup Secrets
@@ -658,6 +666,23 @@ jobs:
             docker login -u $DOCKER_USER -p $DOCKER_PASS
             docker push ${DOCKERHUB_REPO:?}:${CIRCLE_BRANCH:?}
       - *fail_notification
+
+
+  docker_push_latest:
+    executor: infrastructure_container_stable
+    <<: *infrastructure_config
+    steps:
+      - checkout
+      - *setup_secrets
+      - *setup_remote_docker
+      - run:
+          name: Build and push Docker image to DockerHub
+          command: |
+            echo "push latest docker imageD"
+
+            #docker login -u $DOCKER_USER -p $DOCKER_PASS
+            #docker build -t ${DOCKERHUB_REPO:?}:${CIRCLE_TAG:?} -t ${DOCKERHUB_REPO:?}:latest .
+            #docker push ${DOCKERHUB_REPO:?}:latest
 
   docker_push_tag:
     executor: infrastructure_container_stable
@@ -1179,6 +1204,26 @@ workflows:
               ignore: /.*/
             tags:
               only: *stable_tag_regex
+  latest_artifacts:
+    jobs:
+      - hodl_latest:
+          type: approval
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
+      - upload_latest_artifacts:
+          requires:
+            - hodl_latest
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
+
+      - docker_push_latest:
+          requires:
+            - hodl_latest
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
 
   system_tests:
     triggers:
