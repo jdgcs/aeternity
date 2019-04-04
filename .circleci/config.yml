@@ -576,7 +576,7 @@ jobs:
             #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/
             #if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
             #  aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
-            #fi
+            #Dfi
       - *fail_notification
 
   deploy_api_docs:
@@ -1225,6 +1225,7 @@ workflows:
               only: add_additional_separate_ci_for_latest_artefacts_164307557
       - upload_latest_artifacts:
           requires:
+            - linux_package
             - hodl_latest
           filters:
             branches:
