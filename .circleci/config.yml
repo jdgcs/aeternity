@@ -846,7 +846,7 @@ workflows:
               ignore:
                 - env/dev1
                 - env/dev2
-                - sysDtem-tests
+                - system-tests
             tags:
               only: *tag_regex
 
