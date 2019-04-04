@@ -179,7 +179,6 @@ references:
       name: Upload release artifacts to central repository (AWS)
       command: |
         aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/
-        aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
 
   setup_secrets: &setup_secrets
     run:
@@ -554,9 +553,6 @@ jobs:
           name: Upload build artifacts to central repository (AWS)
           command: |
             aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/
-            if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
-              aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
-            fi
       - *fail_notification
 
   upload_latest_artifacts:
@@ -571,12 +567,7 @@ jobs:
       - run:
           name: Upload build artifacts to central repository (AWS)
           command: |
-            echo "upload tatest"
-            echo ${PACKAGE_TARBALL:?}
-            #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/
-            #if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
-            #  aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
-            #Dfi
+            aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
       - *fail_notification
 
   upload_latest_artifacts_osx:
@@ -591,12 +582,7 @@ jobs:
       - run:
           name: Upload build artifacts to central repository (AWS)
           command: |
-            echo "upload tatest"
-            echo ${PACKAGE_TARBALL:?}
-            #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/
-            #if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
-            #  aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
-            #Dfi
+            aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
       - *fail_notification
 
   deploy_api_docs:
@@ -710,11 +696,9 @@ jobs:
       - run:
           name: Build and push Docker image to DockerHub
           command: |
-            echo "push latest docker imageD"
-
-            #docker login -u $DOCKER_USER -p $DOCKER_PASS
-            #docker build -t ${DOCKERHUB_REPO:?}:${CIRCLE_TAG:?} -t ${DOCKERHUB_REPO:?}:latest .
-            #docker push ${DOCKERHUB_REPO:?}:latest
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker build -t ${DOCKERHUB_REPO:?}:${CIRCLE_TAG:?} -t ${DOCKERHUB_REPO:?}:latest .
+            docker push ${DOCKERHUB_REPO:?}:latest
 
   docker_push_tag:
     executor: infrastructure_container_stable
@@ -874,17 +858,6 @@ workflows:
                 - env/dev2
                 - system-tests
                 - master
-
-      - deploy_api_docs:
-          requires:
-            - static_analysis
-            - rebar_lock_check
-            - hodl_green
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: *stable_tag_regex
 
       - docker_system_smoke_tests:
           requires:
@@ -1241,24 +1214,34 @@ workflows:
       - osx_package:
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
+
       - linux_package:
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
 
       - hodl_latest:
           type: approval
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
+
       - upload_latest_artifacts:
           requires:
             - linux_package
             - hodl_latest
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
 
       - upload_latest_artifacts_osx:
           requires:
@@ -1266,26 +1249,27 @@ workflows:
             - hodl_latest
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
 
       - deploy_api_docs:
           requires:
             - hodl_latest
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
-
-#            branches:
-#              ignore: /.*/
-#            tags:
-#              only: *stable_tag_regex
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
 
       - docker_push_latest:
           requires:
             - hodl_latest
           filters:
             branches:
-              only: add_additional_separate_ci_for_latest_artefacts_164307557
+              ignore: /.*/
+            tags:
+              only: *stable_tag_regex
 
   system_tests:
     triggers:
