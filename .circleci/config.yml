@@ -842,7 +842,7 @@ workflows:
               ignore:
                 - env/dev1
                 - env/dev2
-                - system-tests
+                - sysDtem-tests
             tags:
               only: *tag_regex
 
@@ -1218,6 +1218,10 @@ workflows:
               only: *stable_tag_regex
   latest_artifacts:
     jobs:
+      - linux_package:
+          filters:
+            branches:
+              only: add_additional_separate_ci_for_latest_artefacts_164307557
       - hodl_latest:
           type: approval
           filters:
