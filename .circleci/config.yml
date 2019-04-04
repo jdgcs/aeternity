@@ -181,14 +181,6 @@ references:
         aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/
         aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
 
-  upload_latest_artifacts: &upload_latest_artifacts
-    run:
-      name: Upload latest artifacts to central repository (AWS)
-      command: |
-        echo "upload tatest"
-        echo ${PACKAGE_TARBALL:?}
-        #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_RELEASES_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
-
   setup_secrets: &setup_secrets
     run:
       name: Setup Secrets
@@ -565,6 +557,26 @@ jobs:
             if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
               aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
             fi
+      - *fail_notification
+
+  upload_latest_artifacts:
+    executor: infrastructure_container_stable
+    <<: *infrastructure_config
+    steps:
+      - checkout
+      - *set_package_path
+      - *setup_secrets
+      - attach_workspace:
+          at: *packages_workspace
+      - run:
+          name: Upload build artifacts to central repository (AWS)
+          command: |
+            echo "upload tatest"
+            echo ${PACKAGE_TARBALL:?}
+            #aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/
+            #if [ -n "$CIRCLE_BRANCH" -a "$CIRCLE_BRANCH" = "master" ]; then
+            #  aws s3 cp --acl public-read ${PACKAGE_TARBALL:?} s3://${S3_BUILDS_BUCKET:?}/aeternity-latest-${PKG_SUFFIX:?}.tar.gz
+            #fi
       - *fail_notification
 
   deploy_api_docs:
